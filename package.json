@@ -1,0 +1,28 @@
+{
+  "name": "hubot-upptalk",
+  "version": "0.0.0",
+  "description": "UppTalk adapter for Hubot.",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/upptalk/hubot-upptalk.git"
+  },
+  "bugs": "http://github.com/upptalk/hubot-upptalk/issues",
+  "licence": "MIT",
+  "author": "Sonny Piers <sonny@upptalk.com>",
+  "keywords": [
+    "hubot",
+    "upptalk",
+    "adapter"
+  ],
+  "main": "./src/upptalk",
+  "scripts": {
+    "test": "grunt test --verbose"
+  },
+  "dependencies": {
+    "upptalk": "^0.6.4"
+  },
+  "devDependencies": {
+    "coffeelint": "^1.1.0",
+    "grunt": "^0.4.4"
+  }
+}
