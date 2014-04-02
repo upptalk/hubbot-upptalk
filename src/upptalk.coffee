@@ -14,7 +14,7 @@ class UppTalkBot extends Adapter
       password: process.env.HUBOT_UPPTALK_PASSWORD
       host: process.env.HUBOT_UPPTALK_HOST
       port: process.env.HUBOT_UPPTALK_PORT
-      secure: process.env.HUBOT_UPPTALK_SECURE
+      secure: process.env.HUBOT_UPPTALK_SECURE == 'true'
       apikey: process.env.HUBOT_UPPTALK_APIKEY
 
     @robot.logger.info util.inspect(options)
