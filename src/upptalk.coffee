@@ -7,6 +7,7 @@ class UppTalkBot extends Adapter
 
   constructor: ( robot ) ->
     @robot = robot
+    @reconnectTryCount = 0
 
   run: ->
     options =
@@ -24,7 +25,15 @@ class UppTalkBot extends Adapter
     @makeClient()
 
   reconnect: () ->
-    console.log 'reconnect'
+    @reconnectTryCount += 1
+    if @reconnectTryCount > 5
+      @robot.logger.error 'Unable to reconnect to UppTalk server.'
+      process.exit 1
+
+    setTimeout () =>
+      @robot.logger.info 'Hubot UppTalk reconnecting.'
+      @client.open()
+    , 5000
 
   makeClient: () ->
     options = @options
@@ -48,25 +57,29 @@ class UppTalkBot extends Adapter
     @client.on 'message', @message
 
   close: =>
-    @robot.logger.info 'Connection closed, attempting to reconnect'
+    @robot.logger.info 'Hubot UppTalk closed, attempting to reconnect'
     @reconnect()
 
   error: (error) =>
     @robot.logger.error error
 
   open: =>
-    @robot.logger.info 'Hubot UppTalk client open'
+    @robot.logger.info 'Hubot UppTalk open'
 
     @client.exec 'authenticate',
       username: @options.username
       password: @options.password
       @authenticated
 
-  authenticated: =>
-    @robot.logger.info 'Hubot UppTalk client authenticated'
+  authenticated: (err) =>
+    if err
+      @robot.logger.info 'Hubot UppTalk authentication failed'
+      process.exit()
+
+    @robot.logger.info 'Hubot UppTalk authenticated'
 
     @client.exec 'presence'
-    @robot.logger.info 'Hubot XMPP sent initial presence'
+    @robot.logger.info 'Hubot UppTalk sent presence'
 
     # @emit if @connected then 'reconnected' else 'connected'
     @emit 'connected'
@@ -83,16 +96,22 @@ class UppTalkBot extends Adapter
       return
     if !p.text
       return
+    # ignore offline messages
+    if p.timestamp
+      return
 
     @robot.logger.debug "Received message: #{p.text} from: #{p.user}"
 
-    user = @robot.brain.userForId p.user,
-      name: p.name || p.user
-      user: p.user
+    user = @robot.brain.userForId p.user
+    user.name = p.name or p.user
 
-    # hack to avoid having to prepand commands with hubot
-    if p.text.toLowerCase().indexOf @robot.name.toLowerCase() != 0
-      p.text = 'hubot ' + p.text
+    if p.group
+      user.room = p.group
+    else
+      delete user.room
+      #hack to avoid having to prepand commands with hubot name
+      if p.text.toLowerCase().indexOf @robot.name.toLowerCase() != 0
+        p.text = 'hubot ' + p.text
 
     @receive new TextMessage(user, p.text, p.id)
 
@@ -102,19 +121,36 @@ class UppTalkBot extends Adapter
   chat: (user, text) ->
     lines = text.split '\n'
     for line in lines
-      @client.exec 'chat',
+      @robot.logger.debug "Sending message: #{line} to user: #{user}"
+      @client.notify 'chat',
         text: line
         id: Math.random().toString()
         receipt: false
         user: user
 
+  group: (group, text) ->
+    lines = text.split '\n'
+    for line in lines
+      @robot.logger.debug "Sending message: #{line} to group: #{group}"
+      @client.notify 'chat',
+        text: line
+        id: Math.random().toString()
+        receipt: false
+        group: group
+
   send: (envelope, messages...) ->
-    for msg in messages
-      @chat envelope.user.id, msg
+    if envelope.room
+      for msg in messages
+        @group envelope.room, msg
+    else
+      for msg in messages
+        @chat envelope.user.id, msg
 
   reply: (envelope, messages...) ->
-    for msg in messages
-      @chat envelope.user.id, msg
+    console.log 'reply'
+    console.log arguments
+    # for msg in messages
+      # @chat envelope.user.id, msg
     # for msg in messages
     #   # ltx.Element?
     #   if msg.attrs?
